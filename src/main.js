@@ -14,6 +14,9 @@ import router from './router'
 
 import '@/icons' // icon
 import '@/permission' // permission control
+import API from '@/api'
+
+import CategorySelect from '@/components/CategorySelect'
 
 /**
  * If you don't want to use mock-server
@@ -33,7 +36,12 @@ Vue.use(ElementUI, { locale })
 // 如果想要中文版 element-ui，按如下方式声明
 // Vue.use(ElementUI)
 
+//注册CategorySelect全局组件
+Vue.component(CategorySelect.name,CategorySelect)
+
 Vue.config.productionTip = false
+//在vue原型对象上添加$API 任意组件可以使用API相关接口
+Vue.prototype.$API = API
 
 new Vue({
   el: '#app',
