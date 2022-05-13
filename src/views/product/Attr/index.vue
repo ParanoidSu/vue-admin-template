@@ -1,7 +1,8 @@
 <template>
   <div>
     <el-card style="margin: 20px 0">
-      <CategorySelect @getCategoryId="getCategoryId"></CategorySelect>
+      <!-- 让三级列表在添加属性时禁用 -->
+      <CategorySelect @getCategoryId="getCategoryId" :show='isShowTable'></CategorySelect>
     </el-card>
     <el-card>
       <!-- 添加按钮 -->
@@ -89,21 +90,35 @@
           </el-table-column>
           <el-table-column align="center" label="属性值名称" width="width">
             <template slot-scope="{ row }">
-              <el-input placeholder="请输入属性值名称" v-model="row.valueName" size="mini" v-if="row.flag" @blur="showSpan(row)" ref="valueName" @keyup.native.enter="showSpan(row)" focus></el-input>
-              <span v-else @click="showInput(row)" style="display:block;">{{row.valueName}}</span>
+              <el-input
+                placeholder="请输入属性值名称"
+                v-model.trim="row.valueName"
+                size="mini"
+                v-if="row.flag"
+                @blur="showSpan(row)"
+                ref="valueName"
+                @keyup.native.enter="showSpan(row)"
+              ></el-input>
+              <span v-else @click="showInput(row)" style="display: block">{{
+                row.valueName
+              }}</span>
             </template>
           </el-table-column>
           <el-table-column align="center" label="操作" width="width">
-            <template slot-scope="{ row }">
-              <el-button
+            <template slot-scope="{ row,$index }">
+             <!-- popconfirm气泡确认框 -->
+              <el-popconfirm :title="`确认删除${row.valueName}吗？`" @onConfirm="deleteValueName($index)">
+                 <el-button
                 type="danger"
                 icon="el-icon-delete"
                 size="mini"
+                slot="reference"
               ></el-button>
+              </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
-        <el-button type="primary">保存</el-button>
+        <el-button type="primary" @click="saveAttrInfo" :disabled="attrInfo.attrValueList.length <1">保存</el-button>
         <el-button @click="isShowTable = true">取消</el-button>
       </div>
     </el-card>
@@ -151,7 +166,10 @@ export default {
       this.attrInfo.attrValueList.push({
         attrId: this.attrInfo.id,
         valueName: "",
-        flag:true,
+        flag: true,
+      });
+      this.$nextTick(() => {
+        this.$refs.valueName.focus();
       });
     },
     addAttr() {
@@ -165,34 +183,57 @@ export default {
         categoryLevel: 3,
       };
     },
+    //点击编辑按钮
     editAttr(row) {
       this.isShowTable = false;
-      this.attrInfo = JSON.parse(JSON.stringify(row))
+      this.attrInfo = JSON.parse(JSON.stringify(row));
+      this.attrInfo.attrValueList.forEach((item) => {
+        this.$set(item, "flag", false);
+      });
     },
     // input失焦调用
-    showSpan(row){
-        if (row.valueName.trim() =='') {
-            this.$message('输入参数不能为空')
-            this.$refs.valueName.focus()
-            return
+    showSpan(row) {
+      if (row.valueName.trim() == "") {
+        this.$message("输入参数不能为空");
+        this.$refs.valueName.focus();
+        return;
+      }
+      let isRepat = this.attrInfo.attrValueList.some((item) => {
+        // 排除自身
+        if (row != item) {
+          return row.valueName == item.valueName;
         }
-        let isRepat  = this.attrInfo.attrValueList.some((item) => { 
-            // 排除自身
-            if (row !=item) {
-                return row.valueName = item.valueName
-            }
-         })
-         if (isRepat) {
-             return
-         }
-        row.flag = false
+      });
+      if (isRepat) {
+        return;
+      }
+      //规定input不能有空格
+      row.valueName = row.valueName.replace(/\s/g,"")
+      row.flag = false;
     },
     // 单击span后调用
-    showInput(row){
-        row.flag =true
-         this.$nextTick(() => { 
-            this.$refs.valueName.focus()
-          })
+    showInput(row) {
+      row.flag = true;
+      this.$nextTick(() => {
+        this.$refs.valueName.focus();
+      });
+    },
+    // popconfirm气泡确认删除回调
+    deleteValueName(index){
+      this.attrInfo.attrValueList.splice(index,1)
+    },
+    //保存数据并重新渲染页面
+    saveAttrInfo(){
+     this.attrInfo.attrValueList = this.attrInfo.attrValueList.filter((item) => { 
+        if (item.valueName.trim() !='') {
+          delete item.flag
+          return true
+        }
+       })
+      this.$API.attr.reqAddOrUpdateAttr(this.attrInfo)
+      this.isShowTable = true
+      this.getAttrList()
+      
     }
   },
 };
